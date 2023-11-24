@@ -38,6 +38,9 @@ namespace App_v1
         {
             // Согласует поставку с менеджером
             ts.AddApprTask(new ApprovementTask(productToSell));
+
+            Console.WriteLine("Seller " + name + " создает заявку на согласование поставки " + productToSell.name);
+
         }
 
         public void SellProduct()
@@ -62,12 +65,6 @@ namespace App_v1
     public class Buyer : Client
     {
 
-    }
-
-    // Хранит все накладные
-    public class DataBase
-    {
-        public List<Invoice> invoices = new List<Invoice>();
     }
 
 
@@ -178,6 +175,7 @@ namespace App_v1
         public void GetSellerTask()
         {
             this.sellerTask = ts.GetManagerSellerTask();
+            //Console.WriteLine("Менеджер " + name + " взял в исполнение заявку по продаже " + sellerTask.seller.productToSell.name);
         }
 
         public void GetApprTask()
@@ -190,15 +188,19 @@ namespace App_v1
         {
             // Выдаем ID продавцу из заявки
             sellerTask.sellerID = nextId++;
+            Console.WriteLine("Менеджер " + name + " присвоил Seller " + sellerTask.seller.name + " ID " + sellerTask.sellerID);
 
             // Выдаем ID товару из заявки
-            sellerTask.productID = nextId++;
+            sellerTask.productID = nextId++;                    // У него уже нет этого продукта // У него уже нет этого продукта // У него уже нет этого продукта
+            Console.WriteLine("Менеджер " + name + " присвоил Product " + /*sellerTask.seller.productToSell.name + */" ID " + sellerTask.sellerID);
 
             // Создаем накладную и прикрепляем ее к заяке
             sellerTask.inv = new Invoice(sellerTask.sellerID, sellerTask.productID, nextId++);
+            Console.WriteLine("Менеджер " + name + " создал накладную и присвоил ей ID " + sellerTask.inv.invId);
 
             // Создает задачу для Keeper, чтобы он  проверил и разместил товар на складе
             ts.AddKeeperTask(new KeeperTask(sellerTask.inv));
+            Console.WriteLine("Менеджер " + name + " создал заявку на размещение по накладной с ID " + sellerTask.inv.invId);
         }
 
         public void SolveApprTask()
@@ -289,15 +291,19 @@ namespace App_v1
         public void GetKeeperTask()
         {
             this.keeperTask = ts.GetKeeperTask();
+            Console.WriteLine("Keeper " + name + " взял в исполнение заявку по накладной с ID " + keeperTask.inv.invId);
         }
 
         public void SolveKeeperTask()
         {
             // Назначает рабочим проверить поступивший товар
             ts.AddCheckTask(new CheckTask(keeperTask.inv.productId));
+            Console.WriteLine("Keeper " + name + " назначил рабочим проверить товар с ID " + keeperTask.inv.productId);
 
             // Назначает рабочим место, куда нужно разместить указанный товар
             ts.AddTransportTask(new TransportTask(keeperTask.inv.productId, warehouse));
+            Console.WriteLine("Keeper " + name + " назначил рабочим разместить на основной склад товар с ID " + keeperTask.inv.productId);
+
         }
     }
 
@@ -507,7 +513,7 @@ namespace App_v1
 
             Worker worker1 = new Worker("Grisha", ts, wh);
 
-            Keepper keepper1 = new Keepper("Adoh", ts, wh);
+            Keepper keepper1 = new Keepper("Misha", ts, wh);
 
             // Продавец согласует поставку
             seller1.GetApprovement();
