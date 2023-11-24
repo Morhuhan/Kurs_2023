@@ -1,0 +1,8 @@
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\bin\Debug\App_v1.exe.config
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\bin\Debug\App_v1.exe
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\bin\Debug\App_v1.pdb
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\obj\Debug\App_v1.csproj.AssemblyReference.cache
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\obj\Debug\App_v1.csproj.SuggestedBindingRedirects.cache
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\obj\Debug\App_v1.csproj.CoreCompileInputs.cache
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\obj\Debug\App_v1.exe
+C:\Users\radio\OneDrive\Рабочий стол\Курсач_2023\App_v1\App_v1\obj\Debug\App_v1.pdb
