@@ -1,6 +1,4 @@
-﻿// Продавец должен получить деньги а покупатель товар!
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,8 +9,12 @@ namespace App_v1
     public class Client
     {
         //public int ID;
-        public string name;
         public TaskSystem ts { get; set; }
+        public Warehouse warehouse;
+
+        // УСЛОВНО ИСЧЕРПЫВАЮЩАЯ ИНФОРМАЦИЯ О КЛИЕНТЕ
+        public string name;
+        public string address;
     }
 
     public class Seller : Client
@@ -21,17 +23,16 @@ namespace App_v1
         public Product productToSell;
 
         // Адресс склада
-        Warehouse warehouse;
 
         public int sellerId { get; set; }
 
-
-        public Seller(Product product, string name, TaskSystem ts, Warehouse warehouse)
+        public Seller(Product product, TaskSystem ts, Warehouse warehouse, string name, string address)
         {
             this.productToSell = product;
             this.name = name;
             this.ts = ts;
             this.warehouse = warehouse;
+            this.address = address;
         }
 
         public void GetApprovement()
@@ -39,26 +40,38 @@ namespace App_v1
             // Согласует поставку с менеджером
             ts.AddApprTask(new ApprovementTask(productToSell));
 
-            Console.WriteLine("Seller " + name + " создает заявку на согласование поставки " + productToSell.name);
+            Console.WriteLine("Seller " + name + " создает заявку на согласование поставки " + productToSell.productName);
 
         }
 
         public void SellProduct()
         {
-            // Если поставка согласована, то можно отсылать товар и создавать заявку
+            // Если товар соотвествует требованиям хранения (проверяют рабочие) и у него есть ID
+            if (productToSell.isAccepted == true)
+            {
+                // Продовец создает заявку, где указывает свои данные и продукт, который он хочет разместить на основном складе
+                ts.AddSellerTask(new SellerTask(this.name, this.address, this.productToSell.ProductId));
+                Console.WriteLine("Seller " + name + " создает заявку на продажу товара с ID " + productToSell.ProductId);
 
+                // Удаляем продукт у продовца, теперь товар оффициально на временном складе
+                Console.WriteLine("Seller " + name + " остался без товара " + productToSell.productName);
+                productToSell = null;
+            }
+        }
 
-            // Создаем заявку
-            ts.AddSellerTask(new SellerTask(this));
-            Console.WriteLine("Seller " + name + " создает заявку на продажу товара " + productToSell.name);
+        public void TransportProduct()
+        {
+            // Если поставка согласован (менеджером), то можно привозить товар на временный склад
+            if (productToSell.isApproved == true) {
 
-            // Отправляем продукт на склад
-            warehouse.AddTempProduct(productToSell);
-            Console.WriteLine("Seller " + name + " отправляет " + productToSell.name + " на временный склад");
+                // Продовец привзоит товар на временный склад
+                warehouse.AddTempProduct(productToSell);
+                Console.WriteLine("Seller " + name + " привозит " + productToSell.productName + " на временный склад");
 
-            // Удаляем этот продукт у продовца
-            Console.WriteLine("Seller " + name + " остался без продукста " + productToSell.name);
-            productToSell = null;
+                // Рабочие тут же проверяют поступивший товар и присваивают ему ID
+                ts.AddCheckTask(new CheckTask(productToSell));
+                Console.WriteLine("Seller " + name + " создает заявку на проверку товара" + productToSell.productName);
+            }
         }
     }
 
@@ -85,18 +98,14 @@ namespace App_v1
 
     public class Product
     {
+        public string productName;
+        public bool meetRequirements;
 
         // Свойство для хранения уникального ID
-        public int id { get; set; } 
+        public int ProductId { get; set; } 
 
-        public int price;
-
-        public string name;
-
-        Seller seller = null;
-
-        // Товар сотвествует требованиям хранения на складе
-        public bool meetRequirements = false;
+        // Перед тем, как привезти твар, ему нужно присвоить уникальный ID
+        public string sellerID;
 
         // Товар согласован для хранения
         public bool isApproved = false;
@@ -104,14 +113,13 @@ namespace App_v1
         // Товар принят на хранение
         public bool isAccepted = false;
 
-        // Товар согласован для отправки
+        //public string sellerName;
+        //public string sellerAddress;
 
-
-        public Product(int price, bool mR, string name)
+        public Product(bool mR, string name)
         {
-            this.price = price;
             this.meetRequirements = mR;
-            this.name = name;
+            this.productName = name;
         }
     }
 
@@ -155,11 +163,7 @@ namespace App_v1
         public SellerTask sellerTask = null;
         public ApprovementTask apprTask = null;
 
-        public DataBase db;
-
         private static int nextId = 1; // Статическая переменная для отслеживания следующего уникального ID
-
-
 
         public Manager(string name, TaskSystem ts)
         {
@@ -175,7 +179,7 @@ namespace App_v1
         public void GetSellerTask()
         {
             this.sellerTask = ts.GetManagerSellerTask();
-            //Console.WriteLine("Менеджер " + name + " взял в исполнение заявку по продаже " + sellerTask.seller.productToSell.name);
+            Console.WriteLine("Менеджер " + name + " взял в исполнение заявку по продаже товара c ID " + sellerTask.productID);
         }
 
         public void GetApprTask()
@@ -186,33 +190,21 @@ namespace App_v1
 
         public void SolveSellerTask()
         {
-            // Выдаем ID продавцу из заявки
-            sellerTask.sellerID = nextId++;
-            Console.WriteLine("Менеджер " + name + " присвоил Seller " + sellerTask.seller.name + " ID " + sellerTask.sellerID);
-
-            // Выдаем ID товару из заявки
-            sellerTask.productID = nextId++;                    // У него уже нет этого продукта // У него уже нет этого продукта // У него уже нет этого продукта
-            Console.WriteLine("Менеджер " + name + " присвоил Product " + /*sellerTask.seller.productToSell.name + */" ID " + sellerTask.sellerID);
-
-            // Создаем накладную и прикрепляем ее к заяке
-            sellerTask.inv = new Invoice(sellerTask.sellerID, sellerTask.productID, nextId++);
-            Console.WriteLine("Менеджер " + name + " создал накладную и присвоил ей ID " + sellerTask.inv.invId);
-
             // Создает задачу для Keeper, чтобы он  проверил и разместил товар на складе
-            ts.AddKeeperTask(new KeeperTask(sellerTask.inv));
-            Console.WriteLine("Менеджер " + name + " создал заявку на размещение по накладной с ID " + sellerTask.inv.invId);
-        }
+            ts.AddKeeperTask(new KeeperTask(sellerTask.productID));
+            Console.WriteLine("Менеджер " + name + " создал заявку на размещение товара с ID " + sellerTask.productID + " на основной склад");
 
-        public void SolveApprTask()
-        {
-            apprTask.product.isApproved = true;
+            // Менеджер помечает задачу как выполненную и может брать новую
+            this.sellerTask = null;
+            //Console.WriteLine("Менеджер " + name + " выполнил sellerTask");
         }
 
         // Менеджер может согласовать товар на поступление
-        void ApproveProduct(Product product)
+        public void SolveApprTask()
         {
-            product.isApproved = true;
-            Console.WriteLine("Товар " + sellerTask.seller.productToSell + " от продавца" + sellerTask.seller.name + " принят на хранение.");
+            apprTask.product.isApproved = true;
+            Console.WriteLine("Manager " + name + " согласовал для поставки товар " + apprTask.product.productName);
+
         }
 
         // По накладной, хранящейся в базе данных?
@@ -220,21 +212,6 @@ namespace App_v1
         {
 
         }
-
-        //// Менеджер выделяет ID товару
-        //public void IdentProduct(Product product)
-        //{
-        //    // Присваиваем уникальный ID и увеличиваем счетчик
-        //    product.id = nextId++; 
-        //}
-
-        //// Менеджер выделяет ID продавцу
-        //public void IdentSeller(Seller seller)
-        //{
-        //    // Присваиваем уникальный ID и увеличиваем счетчик
-        //    seller.sellerId = nextId++;
-        //}
-
     }
 
     public class Worker : Staff
@@ -242,6 +219,8 @@ namespace App_v1
         CheckTask checkTask = null;
         TransportTask transportTask = null;
         Warehouse warehouse;
+
+        private static int nextId = 1; // Статическая переменная для отслеживания следующего уникального ID
 
         public Worker(string name, TaskSystem ts, Warehouse warehouse)
         {
@@ -253,14 +232,16 @@ namespace App_v1
         public void GetCheckTask()
         {
             this.checkTask = ts.GetCheckTask();
-            Console.WriteLine("Worker " + name + " взял в исполнение задачу на проверку товара с ID " + checkTask.productID);
+            Console.WriteLine("Worker " + name + " взял в исполнение задачу на проверку товара " + checkTask.product.productName);
         }
 
         public void SolveCheckTask()
         {
-            Product tempProduct = warehouse.GetTempProduct(checkTask.productID);
-            tempProduct.isAccepted = true;
-            Console.WriteLine("Worker " + name + " присвоил товару " + tempProduct.name + " с ID " + tempProduct.id + " статус accepted");
+            checkTask.product.isAccepted = true;
+            Console.WriteLine("Worker " + name + " присвоил товару " + checkTask.product.productName + " статус accepted");
+
+            checkTask.product.ProductId = nextId++;
+            Console.WriteLine("Worker " + name + " присвоил товару " + checkTask.product.productName + " ID " + checkTask.product.ProductId);
         }
 
         public void GetTransportTask()
@@ -291,18 +272,14 @@ namespace App_v1
         public void GetKeeperTask()
         {
             this.keeperTask = ts.GetKeeperTask();
-            Console.WriteLine("Keeper " + name + " взял в исполнение заявку по накладной с ID " + keeperTask.inv.invId);
+            Console.WriteLine("Keeper " + name + " взял в исполнение заявку по размещению товара с ID " + keeperTask.productID);
         }
 
         public void SolveKeeperTask()
         {
-            // Назначает рабочим проверить поступивший товар
-            ts.AddCheckTask(new CheckTask(keeperTask.inv.productId));
-            Console.WriteLine("Keeper " + name + " назначил рабочим проверить товар с ID " + keeperTask.inv.productId);
-
             // Назначает рабочим место, куда нужно разместить указанный товар
-            ts.AddTransportTask(new TransportTask(keeperTask.inv.productId, warehouse));
-            Console.WriteLine("Keeper " + name + " назначил рабочим разместить на основной склад товар с ID " + keeperTask.inv.productId);
+            ts.AddTransportTask(new TransportTask(keeperTask.productID, warehouse));
+            Console.WriteLine("Keeper " + name + " назначил рабочим разместить на основной склад товар с ID " + keeperTask.productID);
 
         }
     }
@@ -317,29 +294,32 @@ namespace App_v1
     public class SellerTask
     {
         // Поля, заполняемые менеджером
-        public int productID { set; get; }
+        public int productID;
 
         public int sellerID { set; get; }
 
-        public Invoice inv { set; get; }
+        //public Invoice inv { set; get; }
         //////////////////////////////
+        public string sellerName { get; }
 
-        public Seller seller;
+        public string sellerAddress { get; }
 
-        public SellerTask(Seller seller)
+        public SellerTask(string address, string name, int productID)
         {
-            this.seller = seller;
+            this.sellerName = name;
+            this.sellerAddress = address;
+            this.productID = productID;
         }
     }
 
     // Кладовщик решает, как резместить товар
     public class KeeperTask
     {
-        public Invoice inv;
+        public int productID;
 
-        public KeeperTask(Invoice inv)
+        public KeeperTask(int productID)
         {
-            this.inv = inv;
+            this.productID = productID;
         }
 
     }
@@ -347,7 +327,7 @@ namespace App_v1
     // Менеджер решает, принять товар на склад или нет
     public class ApprovementTask
     {
-        public Product product { get; }
+        public Product product { get; set; }
 
         public ApprovementTask(Product product)
         {
@@ -358,12 +338,11 @@ namespace App_v1
     // Работник проверяет поступивший на temp склад товар
     public class CheckTask
     {
-        public int productID;
+        public Product product;
 
-        // Нужно ID товара
-        public CheckTask(int productID)
+        public CheckTask(Product product)
         {
-            this.productID = productID;
+            this.product = product;
         }
     }
 
@@ -505,9 +484,9 @@ namespace App_v1
 
             Warehouse wh = new Warehouse();
 
-            Product product1 = new Product(12, true, "Колбаса");
+            Product product1 = new Product(true, "Колбаса");
 
-            Seller seller1 = new Seller(product1, "Gosha", ts, wh);
+            Seller seller1 = new Seller(product1, ts, wh,  "Gosha", "Chelyabinsk");
 
             Manager manager1 = new Manager("Oleg", ts);
 
@@ -515,36 +494,33 @@ namespace App_v1
 
             Keepper keepper1 = new Keepper("Misha", ts, wh);
 
-            // Продавец согласует поставку
+            // Продавец пробует согласовать поставку
             seller1.GetApprovement();
 
-            // После одобрения поставки, продавец создает заявку на поставку
-            seller1.SellProduct();
+            // Менеджер решает соглисовать поставку или нет
+            manager1.GetApprTask();
+            manager1.SolveApprTask();
 
-            // Продовец привозит товар на временный склад
+            // Поставщик привозит товар на временный склад, где товар сразу проверяют работники склада и присваивают ему ID (Могут вернуть)
+            seller1.TransportProduct();
+
+            worker1.GetCheckTask();
+            worker1.SolveCheckTask();
+
+            // Если проверка товара прошла успешно, поставщик создает заяку по размещению товара на основном складе
+            seller1.SellProduct();
 
             // Менеджер обрабатывает заявку на поставку
             manager1.GetSellerTask();
-
-            // Менеджер присваивает ID заявке, и создает задачу по проверке и размещению поступившего товара
             manager1.SolveSellerTask();
 
             // Хранитель решает свою задачу, путем создания CheckTask и TransportTask для Worker
             keepper1.GetKeeperTask();
-
             keepper1.SolveKeeperTask();
-
-            // Рабочий проверяет товар
-            worker1.GetCheckTask();
-
-            worker1.SolveCheckTask();
 
             // рабочий переносит товар из временного хранилиша в основное
             worker1.GetTransportTask();
-
             worker1.SolveTransportTask();
-
-
         }
     }
 }
